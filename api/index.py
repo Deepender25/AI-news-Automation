@@ -105,25 +105,23 @@ def summarize_with_gemini(articles):
                     import time
                     time.sleep(2)  # 2-second pause every 5 articles
                 
-                # Create detailed prompt for comprehensive summary
-                prompt = f"""Create a comprehensive, detailed summary (8-10 lines) of this AI/Tech news article. 
-Make it informative enough that readers can understand the full story without clicking the link.
+                # Create prompt for topic summary (not article content)
+                prompt = f"""Create a clear, concise 4-5 line summary explaining WHAT this topic is about and WHY it matters in AI/technology.
+
+DO NOT summarize the article content. Instead, explain the TOPIC itself.
 
 FORMATTING RULES:
-- Use **bold** for company names (OpenAI, Google, Microsoft, etc.)
-- Use **bold** for AI model names (GPT-4, Claude, Gemini, etc.)
-- Use **bold** for product names (ChatGPT, Copilot, Bard, etc.)
-- Use **bold** for key technical terms and concepts
-- DO NOT use quotes - just bold formatting
-- Write in clear, professional language
-- Include specific details, numbers, and context
-- Explain the significance and implications
+- Write 4-5 lines maximum
+- Explain what this technology/topic/development is
+- Explain why it's significant in AI/tech
+- Use simple, clear language
+- Do not use bold formatting or special characters
+- Make it educational about the topic, not a news summary
 
 Title: {article['title']}
 Source: {article['source']}
-Original Content: {article['summary'][:600] if article['summary'] else 'Limited content available'}
 
-Provide a detailed, comprehensive summary that covers all key points:"""
+Provide a 4-5 line explanation of what this topic is about and its significance:"""
                 
                 response = model.generate_content(prompt)
                 
@@ -287,7 +285,7 @@ def create_daily_email(articles):
         <!-- Simple Footer -->
         <footer style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
             <p style="color: #888; font-size: 12px; margin: 0;">
-                AI-generated summaries | Delivered daily at 1:00 AM UTC
+                AI-generated topic summaries | Delivered daily at 1:00 AM IST
             </p>
         </footer>
         
