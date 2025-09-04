@@ -3,8 +3,8 @@ import requests
 import feedparser
 import google.generativeai as genai
 from http.server import BaseHTTPRequestHandler
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, HtmlContent
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 
 # --- Configuration ---
 RSS_FEEDS = [
@@ -49,31 +49,34 @@ def summarize_with_gemini(headlines_text):
         print(f"An error during summarization: {e}")
         return "<h1>Error: Could not generate summary.</h1>"
 
-def send_email(html_content):
-    """Sends the summary email using SendGrid."""
-    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+def send_email_with_brevo(html_content):
+    """Sends the summary email using the Brevo (Sendinblue) API."""
+    brevo_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("SENDER_EMAIL")
     recipient_emails_str = os.getenv("RECIPIENT_EMAILS")
 
-    if not all([sendgrid_key, sender_email, recipient_emails_str]):
+    if not all([brevo_key, sender_email, recipient_emails_str]):
         raise ValueError("Email environment variables not fully set.")
 
-    # Convert the comma-separated string of emails into a list
-    recipients = [email.strip() for email in recipient_emails_str.split(',')]
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = brevo_key
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+    sender = {"email": sender_email}
+    recipients = [{"email": email.strip()} for email in recipient_emails_str.split(',')]
     
-    message = Mail(
-        from_email=sender_email,
-        to_emails=recipients,
-        subject='Your Daily AI, ML & Tech Briefing 🚀',
-        html_content=html_content
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+        to=recipients,
+        html_content=html_content,
+        sender=sender,
+        subject='Your Daily AI, ML & Tech Briefing 🚀'
     )
-    
+
     try:
-        sg = SendGridAPIClient(sendgrid_key)
-        response = sg.send(message)
-        print(f"Email sent successfully! Status code: {response.status_code}")
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+        api_instance.send_transac_email(send_smtp_email)
+        print("Email sent successfully via Brevo!")
+    except ApiException as e:
+        print(f"Failed to send email via Brevo: {e}")
 
 # --- Vercel Handler Function ---
 class handler(BaseHTTPRequestHandler):
@@ -81,7 +84,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             headlines = fetch_news_articles()
             summary_html = summarize_with_gemini(headlines)
-            send_email(summary_html)
+            send_email_with_brevo(summary_html)
             
             self.send_response(200)
             self.end_headers()
