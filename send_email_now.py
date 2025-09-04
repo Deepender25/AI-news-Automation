@@ -96,52 +96,22 @@ def remove_duplicates(articles):
     return unique_articles
 
 def create_detailed_fallback_summary(article):
-    """Create a detailed fallback summary when AI fails"""
+    """Create a concise fallback summary when AI fails"""
     title = article['title']
     original_summary = article.get('summary', '')
     
-    # Try to extract company/product names for bold formatting (without quotes)
-    companies = ['OpenAI', 'Google', 'Microsoft', 'Meta', 'Apple', 'Amazon', 'Tesla', 'NVIDIA', 'Adobe', 'IBM', 'Anthropic']
-    models = ['GPT-4', 'GPT-3', 'Claude', 'Gemini', 'Bard', 'ChatGPT', 'Copilot', 'DALL-E', 'Midjourney']
-    
-    formatted_title = title
-    for company in companies:
-        if company.lower() in title.lower():
-            formatted_title = formatted_title.replace(company, f'**{company}**')
-    
-    for model in models:
-        if model.lower() in title.lower():
-            formatted_title = formatted_title.replace(model, f'**{model}**')
-    
-    if original_summary and len(original_summary) > 200:
-        # Create a comprehensive summary using original content
-        summary_text = original_summary[:400]
-        # Add bold formatting to key terms in the summary
-        for company in companies:
-            if company.lower() in summary_text.lower():
-                summary_text = summary_text.replace(company, f'**{company}**')
-        for model in models:
-            if model.lower() in summary_text.lower():
-                summary_text = summary_text.replace(model, f'**{model}**')
+    if original_summary and len(original_summary) > 100:
+        # Use the original summary but make it concise
+        sentences = original_summary.split('. ')
+        if len(sentences) >= 3:
+            summary_text = '. '.join(sentences[:3]) + '.'
+        else:
+            summary_text = original_summary[:300] + '...' if len(original_summary) > 300 else original_summary
         
-        return f"""This article covers developments regarding {formatted_title}.
-
-{summary_text}
-
-This represents significant progress in the **artificial intelligence** and technology sector. The advancement demonstrates the ongoing evolution of **machine learning** capabilities and could have important implications for businesses, developers, and end users. The development highlights the competitive landscape in AI technology and the rapid pace of innovation in this field.
-
-The implications of this advancement extend beyond the immediate technical achievements, potentially influencing industry standards and future development directions in the **AI** space."""
+        return f"This article discusses {title.lower()}. {summary_text} This development represents important progress in the artificial intelligence and technology sector."
     else:
-        # Create detailed summary based on title analysis
-        return f"""This article discusses significant developments related to {formatted_title}.
-
-The announcement represents a notable advancement in the **artificial intelligence** and technology sector. This development showcases the ongoing innovation in **machine learning** and demonstrates the competitive dynamics within the AI industry.
-
-The advancement has potential implications for various stakeholders including developers, businesses, and end users who rely on AI-powered solutions. The development reflects the rapid pace of progress in **AI technology** and suggests continued evolution in this space.
-
-This represents part of the broader trend of technological advancement and innovation that is reshaping how we interact with and benefit from **artificial intelligence** systems. The implications may extend beyond the immediate technical achievements to influence future industry directions.
-
-The development underscores the importance of staying informed about AI advancements as they continue to impact various sectors and applications."""
+        # Create a basic summary based on title
+        return f"This article covers recent developments related to {title.lower()}. The announcement highlights significant progress in artificial intelligence and technology. This advancement demonstrates the ongoing innovation in the AI sector and its potential impact on the industry."
 
 def summarize_with_gemini(articles):
     """Create detailed AI summaries with bold key topics"""
@@ -176,25 +146,22 @@ def summarize_with_gemini(articles):
                     import time
                     time.sleep(1)  # 1-second pause every 3 articles
                 
-                # Create detailed prompt for comprehensive summary
-                prompt = f"""Create a comprehensive, detailed summary (8-10 lines) of this AI/Tech news article. 
-Make it informative enough that readers can understand the full story without clicking the link.
+                # Create prompt for concise, informative summary
+                prompt = f"""Create a brief, informative summary (3-4 sentences) that gives readers enough knowledge to understand what this article is about without needing to read the full piece.
 
-FORMATTING RULES:
-- Use **bold** for company names (OpenAI, Google, Microsoft, etc.)
-- Use **bold** for AI model names (GPT-4, Claude, Gemini, etc.)
-- Use **bold** for product names (ChatGPT, Copilot, Bard, etc.)
-- Use **bold** for key technical terms and concepts
-- DO NOT use quotes - just bold formatting
-- Write in clear, professional language
-- Include specific details, numbers, and context
-- Explain the significance and implications
+REQUIREMENTS:
+- Write 3-4 sentences maximum
+- Focus on the key facts, developments, or announcements
+- Explain what happened, who is involved, and why it matters
+- Use clear, professional language
+- No bold formatting or special characters
+- Make it informative enough that readers get the main points
 
 Title: {article['title']}
 Source: {article['source']}
-Original Content: {article['summary'][:600] if article['summary'] else 'Limited content available'}
+Original content: {article.get('summary', '')[:300]}
 
-Provide a detailed, comprehensive summary that covers all key points:"""
+Provide a concise summary that captures the essential information:"""
                 
                 response = model.generate_content(prompt)
                 
@@ -235,72 +202,88 @@ Provide a detailed, comprehensive summary that covers all key points:"""
         return fallback_articles
 
 def create_daily_email(articles):
-    """Create single professional email with all daily articles"""
+    """Create clean, professional email with all daily articles"""
     current_date = datetime.utcnow().strftime("%B %d, %Y")
     weekday = datetime.utcnow().strftime("%A")
     
     # Create articles HTML
     articles_html = ""
     
-    for article in articles:
-        summary_text = article.get('ai_summary', 'Visit the link below to read about this important development in AI and technology.')
+    for i, article in enumerate(articles, 1):
+        # Clean and format article data
+        title = article.get('title', 'Untitled Article').strip()
+        link = article.get('link', '#').strip()
+        
+        # Get AI summary and clean it
+        summary_text = article.get('ai_summary', '')
+        if not summary_text:
+            summary_text = "This article covers important developments in artificial intelligence and technology that are shaping the industry today."
+        
+        # Clean summary text - remove markdown formatting but keep content readable
+        summary_text = summary_text.replace('**', '').replace('*', '').strip()
+        
+        # Ensure summary is concise but informative
+        if len(summary_text) > 500:
+            sentences = summary_text.split('. ')
+            summary_text = '. '.join(sentences[:3]) + '.'
         
         articles_html += f"""
-        <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
-            <h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 20px; line-height: 1.4; font-weight: 700;">
-                <a href="{article['link']}" style="color: #2c3e50; text-decoration: none;">{article['title']}</a>
-            </h3>
+        <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0;">
+            <h2 style="color: #333333; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.4;">
+                {title}
+            </h2>
             
-            <p style="color: #7f8c8d; margin: 0 0 15px 0; font-size: 13px; font-weight: 500;">
-                {current_date} | Source: {article['source'].replace('.com', '').replace('feedburner', 'AI News').title()}
+            <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0; text-align: justify;">
+                {summary_text}
             </p>
             
-            <div style="margin-bottom: 20px;">
-                <p style="color: #34495e; font-size: 15px; line-height: 1.7; margin: 0; text-align: justify;">{summary_text}</p>
-            </div>
-            
-            <div style="margin-top: 15px;">
-                <a href="{article['link']}" style="color: #3498db; text-decoration: none; font-size: 14px; font-weight: 600;">Read Full Article →</a>
-            </div>
+            <p style="margin: 0;">
+                <a href="{link}" style="color: #0066cc; text-decoration: none; font-size: 14px; font-weight: 500;">
+                    Read Full Article →
+                </a>
+            </p>
         </div>
-"""
+        """
     
+    # Create clean, professional email
     return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Technology News - {current_date}</title>
-    </head>
-    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333333; background-color: #ffffff; margin: 0; padding: 0;">
-        <div style="max-width: 700px; margin: 0 auto; padding: 40px 30px; background-color: #ffffff;">
-            
-            <!-- Professional Header -->
-            <div style="text-align: center; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 3px solid #f0f0f0;">
-                <h1 style="color: #2c3e50; margin: 0 0 10px 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">AI Technology News</h1>
-                <p style="color: #7f8c8d; margin: 0; font-size: 16px; font-weight: 500;">{weekday}, {current_date}</p>
-                <p style="color: #95a5a6; margin: 5px 0 0 0; font-size: 14px;">{len(articles)} articles • AI-summarized for your convenience</p>
-            </div>
-            
-            <!-- Articles Content -->
-            <div>
-                {articles_html}
-            </div>
-            
-            <!-- Professional Footer -->
-            <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 2px solid #f0f0f0;">
-                <p style="color: #95a5a6; font-size: 13px; margin: 0 0 10px 0; line-height: 1.6;">
-                    Summaries generated by AI technology | Delivered manually for testing
-                </p>
-                <p style="color: #bdc3c7; font-size: 12px; margin: 0;">
-                    <a href="https://ai-news-automation.vercel.app" style="color: #3498db; text-decoration: none;">AI News Automation Project</a>
-                </p>
-            </div>
-            
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Technology News - {weekday}, {current_date}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f8f9fa; margin: 0; padding: 20px;">
+    
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        
+        <!-- Header -->
+        <div style="background-color: #ffffff; padding: 30px 30px 20px 30px; border-bottom: 2px solid #f0f0f0;">
+            <h1 style="color: #2c3e50; font-size: 24px; font-weight: 700; margin: 0 0 8px 0; text-align: center;">
+                AI Technology News
+            </h1>
+            <p style="color: #7f8c8d; font-size: 16px; margin: 0; text-align: center; font-weight: 500;">
+                {weekday}, {current_date} • {len(articles)} Articles
+            </p>
         </div>
-    </body>
-    </html>
+        
+        <!-- Articles -->
+        <div style="padding: 30px;">
+            {articles_html}
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f8f9fa; padding: 20px 30px; border-top: 1px solid #e0e0e0; text-align: center;">
+            <p style="color: #6c757d; font-size: 12px; margin: 0; line-height: 1.4;">
+                AI-generated summaries • Delivered daily
+            </p>
+        </div>
+        
+    </div>
+    
+</body>
+</html>
     """
 
 def send_daily_email(articles):
