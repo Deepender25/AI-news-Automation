@@ -1,7 +1,13 @@
 {
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python"
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/index",
+      "schedule": "55 23 * * *"
+    }
+  ]
 }

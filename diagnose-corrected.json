@@ -1,0 +1,33 @@
+{
+  "status": "🔍 Environment Diagnosis",
+  "environment_variables": {
+    "BREVO_API_KEY": {
+      "present": true,
+      "length": 89,
+      "starts_with": "xkeysib-fd...",
+      "valid_format": true
+    },
+    "SENDER_EMAIL": {
+      "present": true,
+      "value": "yadavdeepender65@gmail.com",
+      "contains_at": true
+    },
+    "RECIPIENT_EMAILS": {
+      "present": false,
+      "value": "Not set",
+      "contains_at": false,
+      "count": 0
+    },
+    "GEMINI_API_KEY": {
+      "present": true,
+      "length": 39,
+      "starts_with": "AIzaSyC6Sl..."
+    }
+  },
+  "brevo_import": "✅ Success",
+  "gemini_import": "✅ Success",
+  "brevo_api_test": "⏭️ Skipped (avoiding API calls)",
+  "recommendations": [
+    "🔧 Set valid RECIPIENT_EMAILS (comma-separated)"
+  ]
+}
