@@ -1,9 +1,0 @@
-{
-    "functions": {
-      "api/index.py": {
-        "runtime": "python3.11",
-        "maxDuration": 45,
-        "memory": 1024
-      }
-    }
-  }
