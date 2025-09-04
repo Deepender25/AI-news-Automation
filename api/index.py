@@ -212,84 +212,67 @@ def create_fallback_summary(article):
     return create_detailed_fallback_summary(article)
 
 def create_daily_email(articles):
-    """Create simple professional email template"""
+    """Create ultra-simple modern email template"""
     current_date = datetime.utcnow().strftime("%B %d, %Y")
     weekday = datetime.utcnow().strftime("%A")
     
-    # Create simple articles HTML
-    articles_html = ""
+    # Create simple articles text
+    articles_text = ""
     
-    for article in articles:
+    for i, article in enumerate(articles, 1):
         # Clean and format article data
         title = article.get('title', 'Untitled Article').strip()
         link = article.get('link', '#').strip()
         source = article.get('source', 'Unknown').replace('.com', '').replace('feedburner', 'AI News').replace('www.', '').title()
         
-        # Get brief AI summary (3-4 sentences max)
+        # Get brief AI summary (4-5 lines max)
         summary_text = article.get('ai_summary', '')
         if not summary_text:
-            summary_text = "This article discusses important developments in artificial intelligence and technology."
+            summary_text = "This topic covers important developments in artificial intelligence and technology."
         
-        # Make summary brief (first 3 sentences only)
-        sentences = summary_text.split('. ')
-        if len(sentences) > 3:
-            summary_text = '. '.join(sentences[:3]) + '.'
+        # Ensure summary is 4-5 lines maximum
+        lines = summary_text.split('\n')
+        if len(lines) > 5:
+            summary_text = '\n'.join(lines[:5])
         
-        # Clean summary text and remove markdown formatting
-        summary_text = summary_text.replace('**', '').replace('\n', ' ').strip()
+        # Clean summary text and remove all formatting
+        summary_text = summary_text.replace('**', '').replace('*', '').strip()
         
-        articles_html += f"""
-            <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #ddd;">
-                <h3 style="color: #333; margin: 0 0 8px 0; font-size: 18px; line-height: 1.4; font-weight: 600;">
-                    {title}
-                </h3>
-                
-                <p style="color: #666; margin: 0 0 12px 0; font-size: 13px;">
-                    {current_date} | Source: {source}
-                </p>
-                
-                <p style="color: #444; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0;">
-                    {summary_text}
-                </p>
-                
-                <a href="{link}" style="color: #0066cc; text-decoration: none; font-size: 14px; font-weight: 500;">
-                    Read Full Article →
-                </a>
-            </div>
+        articles_text += f"""
+
+{i}. {title}
+
+{current_date} | Source: {source}
+
+{summary_text}
+
+Read Full Article: {link}
+
+{'-' * 80}
         """
     
-    # Create simple HTML email structure
+    # Create plain text email with minimal HTML
     return f"""
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Technology News - {current_date}</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 20px;">
-    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 5px;">
-        
-        <!-- Simple Header -->
-        <header style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee;">
-            <h1 style="color: #333; margin: 0 0 8px 0; font-size: 24px; font-weight: 700;">AI Technology News</h1>
-            <p style="color: #666; margin: 0; font-size: 14px;">{weekday}, {current_date}</p>
-            <p style="color: #888; margin: 5px 0 0 0; font-size: 12px;">{len(articles)} articles</p>
-        </header>
-        
-        <!-- Articles -->
-        <main>
-            {articles_html}
-        </main>
-        
-        <!-- Simple Footer -->
-        <footer style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="color: #888; font-size: 12px; margin: 0;">
-                AI-generated topic summaries | Delivered daily at 1:00 AM IST
-            </p>
-        </footer>
-        
-    </div>
+<body style="font-family: Arial, sans-serif; line-height: 1.5; color: #000000; margin: 20px; background-color: #ffffff;">
+    
+    <h1>AI Technology News</h1>
+    <p>{weekday}, {current_date}</p>
+    <p>{len(articles)} articles</p>
+    
+    <hr>
+    
+    <div style="white-space: pre-line;">{articles_text}</div>
+    
+    <hr>
+    
+    <p><small>AI-generated topic summaries | Delivered daily at 1:00 AM IST</small></p>
+    
 </body>
 </html>
     """
