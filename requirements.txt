@@ -1,0 +1,4 @@
+google-generativeai
+feedparser
+requests
+sib-api-v3-sdk
