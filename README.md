@@ -20,7 +20,7 @@ This will give you a real-time report on your configuration. If any variables ar
 - **AI-Powered Summarization**: Uses Google Gemini to create concise, informative summaries.
 - **Smart Content Filtering**: Filters for recent articles and removes duplicates.
 - **Professional Email Design**: Delivers a clean, modern, and mobile-friendly HTML email.
-- **Automated Daily Delivery**: Runs on a schedule using Vercel Cron Jobs.
+- **Automated Daily Delivery**: Runs on a schedule using a GitHub Action.
 
 ## 📁 Project Structure
 
@@ -29,9 +29,10 @@ This will give you a real-time report on your configuration. If any variables ar
 ├── api/
 │   ├── index.py        # Main automation logic
 │   ├── check.py        # Health check and debugging endpoint
-│   ├── simple.py       # Simple status endpoint
-│   └── test-now.py     # Email testing endpoint
-├── .github/            # GitHub Actions (if any)
+│   └── ...
+├── .github/
+│   └── workflows/
+│       └── daily-news.yml # GitHub Action for scheduled runs
 ├── vercel.json         # Vercel deployment configuration
 ├── requirements.txt    # Python dependencies
 └── README.md           # This file
@@ -73,28 +74,23 @@ After deployment, use the health check endpoint to confirm everything is configu
 
 If it reports success, your application is ready!
 
+## 📅 Scheduling
+
+The daily job is scheduled to run via a GitHub Action, defined in `.github/workflows/daily-news.yml`. You can change the schedule by editing the `cron` property in that file.
+
+Example:
+```yaml
+on:
+  schedule:
+    # Runs at 10:10 UTC daily
+    - cron: '10 10 * * *'
+```
+
 ## 🔍 Troubleshooting
 
 If the health check at `/api/check` shows that all variables are set but the application still fails, consider the following:
 
-- **Check Vercel Function Logs**: Go to the "Logs" tab in your Vercel project dashboard. Look for any errors in the `api/index` function when it runs.
+- **Check Vercel Function Logs**: Go to the "Logs" tab in your Vercel project dashboard.
+- **Check GitHub Action Logs**: Go to the "Actions" tab in your GitHub repository to see if the scheduled job ran successfully.
 - **Invalid API Keys**: Ensure your API keys are correct and have the necessary permissions.
-- **Cron Job Failures**: Note that Vercel Cron Jobs may require a paid plan to run reliably. You can always trigger the function manually by visiting `/api/index`.
 - **Test Email Sending**: Visit `/api/test-now` to send a simple test email. This can help isolate issues with your Brevo configuration.
-
-## 📅 Scheduling
-
-The cron job is configured in `vercel.json` to run daily. You can change the schedule by editing the `schedule` property:
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/index",
-      "schedule": "30 19 * * *"
-    }
-  ]
-}
-```
-
-This uses a standard cron syntax. The default is 7:30 PM UTC.
