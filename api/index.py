@@ -89,14 +89,35 @@ def fetch_news_articles():
     
     # Remove duplicates based on title similarity
     unique_articles = remove_duplicates(all_articles)
-    return unique_articles[:25]  # Limit to 25 articles for faster processing
+    return unique_articles[:30]  # Increase to ensure we get at least 10-15 articles
 
 def extract_domain(url):
-    """Extract domain name from URL for source attribution"""
+    """Extract clean, readable domain name from URL for source attribution"""
     try:
         from urllib.parse import urlparse
         domain = urlparse(url).netloc
-        return domain.replace('www.', '').replace('feeds.', '')
+        
+        # Clean up domain name
+        domain = domain.replace('www.', '').replace('feeds.', '').replace('feed.', '')
+        
+        # Create more readable source names
+        source_mapping = {
+            'technologyreview.com': 'MIT Technology Review',
+            'venturebeat.com': 'VentureBeat',
+            'marktechpost.com': 'MarkTechPost',
+            'research.google': 'Google Research',
+            'feedburner.com': 'AI News',
+            'wired.com': 'Wired',
+            'ai-techpark.com': 'AI TechPark',
+            'bair.berkeley.edu': 'Berkeley AI Research',
+            'magazine.sebastianraschka.com': 'Sebastian Raschka',
+            '404media.co': '404 Media',
+            'ai2people.com': 'AI2People'
+        }
+        
+        # Return mapped name if available, otherwise cleaned domain
+        return source_mapping.get(domain, domain.capitalize())
+        
     except:
         return "Unknown"
 
@@ -129,8 +150,8 @@ def summarize_with_gemini(articles):
         # Create individual summaries for each article
         summarized_articles = []
         
-        # Process fewer articles with minimal delays
-        articles_to_process = articles[:10]  # Reduce from 15 to 10 articles
+        # Process more articles to get at least 10 in email
+        articles_to_process = articles[:15]  # Increase back to 15 for better coverage
         
         for i, article in enumerate(articles_to_process):
             try:
@@ -268,8 +289,8 @@ def create_daily_email(articles):
             </p>
             
             <p style="margin: 0;">
-                <a href="{link}" style="color: #0066cc; text-decoration: none; font-size: 14px; font-weight: 500;">
-                    Read Full Article: {link}
+                <a href="{link}" style="background-color: #0066cc; color: white; padding: 8px 16px; text-decoration: none; font-size: 13px; font-weight: 500; border-radius: 4px; display: inline-block;">
+                    Read Full Article
                 </a>
             </p>
         </div>
