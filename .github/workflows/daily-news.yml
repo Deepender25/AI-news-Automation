@@ -2,8 +2,8 @@ name: Daily AI News Email
 
 on:
   schedule:
-    # Run daily at 11:55 PM UTC (6:25 AM IST)
-    - cron: '55 23 * * *'
+    # Run daily at 10:10 AM UTC (3:40 PM IST)
+    - cron: '10 10 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
