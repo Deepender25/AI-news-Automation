@@ -3,37 +3,50 @@ name: Daily AI News Automation
 on:
   schedule:
     # Run daily at 11:55 PM UTC (6:25 AM IST)
-    - cron: '11 50 * * *'
+    - cron: "55 23 * * *"
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   trigger-news:
     runs-on: ubuntu-latest
-    # Only run on main branch to prevent duplicate emails
-    if: github.ref == 'refs/heads/main'
 
     steps:
+      - name: Debug Info
+        run: |
+          echo "🔍 Debug Information:"
+          echo "Branch: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Timestamp: $(date)"
+
       - name: Trigger AI News Automation
         run: |
           echo "🚀 Triggering AI News Automation..."
           echo "📡 Sending request to Vercel endpoint..."
 
-          response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+          # Simple curl request with better error handling
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             -X GET \
             -H "User-Agent: GitHub-Actions-Daily-News" \
+            --connect-timeout 30 \
             --max-time 300 \
             https://ai-news-automation.vercel.app/api/index)
 
-          http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+          echo "📝 Full Response:"
+          echo "$response"
 
-          echo "📊 HTTP Status: $http_code"
-          echo "📝 Response: $body"
+          # Extract HTTP status code
+          http_code=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2 | tr -d ' ')
 
-          if [ $http_code -eq 200 ]; then
+          echo "📊 HTTP Status Code: $http_code"
+
+          if [ "$http_code" = "200" ]; then
             echo "✅ Success! AI News email sent successfully"
           else
             echo "❌ Failed with status code: $http_code"
+            echo "🔍 Checking if main endpoint is reachable..."
+            curl -s https://ai-news-automation.vercel.app/api/simple && echo "✅ Simple endpoint is reachable" || echo "❌ Endpoint not reachable"
+            echo "Full error details above. Check logs for more information."
             exit 1
           fi
 
