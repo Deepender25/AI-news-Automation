@@ -9,55 +9,87 @@ import re
 
 # --- Enhanced Core Functions ---
 def fetch_news_articles():
-    """Fetch AI news from comprehensive RSS feed list"""
+    """Fetch AI news from comprehensive RSS feed list with timeouts"""
+    import socket
+    
+    # Prioritized RSS feeds (most reliable sources first)
     RSS_FEEDS = [
-        # Core AI/ML News
+        # Core AI/ML News (most reliable)
         "https://www.technologyreview.com/tag/artificial-intelligence/feed/",
         "https://venturebeat.com/category/ai/feed/",
+        "https://marktechpost.com/feed/",
+        # Academic & Research  
+        "https://research.google/blog/rss/",
+        # Additional sources (lower priority)
         "http://feeds.feedburner.com/AINews",
         "https://www.wired.com/feed/tag/ai/latest/rss",
-        "https://marktechpost.com/feed/",
         "https://ai-techpark.com/category/ai/feed/",
-        "https://knowtechie.com/category/ai/feed/",
-        # Academic & Research
-        "https://research.google/blog/rss/",
-        "https://bair.berkeley.edu/blog/feed.xml",
-        "https://magazine.sebastianraschka.com/feed",
-        # Broader Tech News
-        "https://www.404media.co/rss/",
-        "https://ai2people.com/feed/",
     ]
     
     all_articles = []
     today = datetime.utcnow().date()
     yesterday = today - timedelta(days=1)
     
-    for url in RSS_FEEDS:
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries:
-                # Get article date
-                article_date = None
-                if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                    article_date = datetime(*entry.published_parsed[:6]).date()
-                elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
-                    article_date = datetime(*entry.updated_parsed[:6]).date()
+    # Set global socket timeout for RSS requests
+    original_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(8)  # 8 second timeout per feed
+    
+    # Process only first 5 feeds to avoid timeout
+    feeds_to_process = RSS_FEEDS[:5]  
+    
+    try:
+        for url in feeds_to_process:
+            try:
+                # Parse feed with built-in timeout via socket setting
+                feed = feedparser.parse(url)
                 
-                # Include articles from today and yesterday
-                if article_date and article_date >= yesterday:
-                    all_articles.append({
-                        'title': entry.title,
-                        'link': entry.link if hasattr(entry, 'link') else '',
-                        'summary': entry.summary if hasattr(entry, 'summary') else '',
-                        'date': article_date,
-                        'source': extract_domain(url)
-                    })
-        except Exception as e:
-            print(f"Error fetching feed {url}: {e}")
+                # Quick check if feed is valid
+                if not hasattr(feed, 'entries') or not feed.entries:
+                    continue
+                    
+                for entry in feed.entries[:10]:  # Limit entries per feed
+                    # Get article date
+                    article_date = None
+                    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                        try:
+                            article_date = datetime(*entry.published_parsed[:6]).date()
+                        except (TypeError, ValueError):
+                            continue
+                    elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                        try:
+                            article_date = datetime(*entry.updated_parsed[:6]).date()
+                        except (TypeError, ValueError):
+                            continue
+                    
+                    # Include articles from today and yesterday
+                    if article_date and article_date >= yesterday:
+                        all_articles.append({
+                            'title': getattr(entry, 'title', 'No Title'),
+                            'link': getattr(entry, 'link', ''),
+                            'summary': getattr(entry, 'summary', '')[:500],  # Limit summary length
+                            'date': article_date,
+                            'source': extract_domain(url)
+                        })
+                        
+                        # Stop early if we have enough articles
+                        if len(all_articles) >= 30:
+                            break
+                            
+            except Exception as e:
+                print(f"Error fetching feed {url}: {e}")
+                continue  # Continue with next feed
+                
+            # Early exit if we have enough articles
+            if len(all_articles) >= 30:
+                break
+                
+    finally:
+        # Restore original timeout
+        socket.setdefaulttimeout(original_timeout)
     
     # Remove duplicates based on title similarity
     unique_articles = remove_duplicates(all_articles)
-    return unique_articles[:50]  # Limit to 50 most recent articles
+    return unique_articles[:25]  # Limit to 25 articles for faster processing
 
 def extract_domain(url):
     """Extract domain name from URL for source attribution"""
@@ -97,13 +129,15 @@ def summarize_with_gemini(articles):
         # Create individual summaries for each article
         summarized_articles = []
         
-        # Process articles in smaller batches to avoid rate limits
-        for i, article in enumerate(articles[:15]):
+        # Process fewer articles with minimal delays
+        articles_to_process = articles[:10]  # Reduce from 15 to 10 articles
+        
+        for i, article in enumerate(articles_to_process):
             try:
-                # Add a small delay to avoid rate limiting
-                if i > 0 and i % 5 == 0:
+                # Minimal delay to avoid rate limiting
+                if i > 0 and i % 8 == 0:
                     import time
-                    time.sleep(2)  # 2-second pause every 5 articles
+                    time.sleep(1)  # Reduced from 2 to 1 second
                 
                 # Create prompt for concise, informative summary
                 prompt = f"""Create a brief, informative summary (3-4 sentences) that gives readers enough knowledge to understand what this article is about without needing to read the full piece.
