@@ -9,7 +9,7 @@ import re
 
 # --- Enhanced Core Functions ---
 def fetch_news_articles():
-    """Fetch AI news from comprehensive RSS feed list - only today and yesterday articles"""
+    """Fetch AI news from comprehensive RSS feed list - today, yesterday, and day before yesterday"""
     import socket
     
     # Prioritized RSS feeds (most reliable sources first)
@@ -32,7 +32,7 @@ def fetch_news_articles():
     
     all_articles = []
     today = datetime.utcnow().date()
-    yesterday = today - timedelta(days=1)  # Only today and yesterday
+    day_before_yesterday = today - timedelta(days=2)  # Today, yesterday, and day before yesterday
     
     # Set global socket timeout for RSS requests
     original_timeout = socket.getdefaulttimeout()
@@ -65,8 +65,8 @@ def fetch_news_articles():
                         except (TypeError, ValueError):
                             continue
                     
-                    # Only include articles from today and yesterday
-                    if article_date and article_date >= yesterday:
+                    # Include articles from today, yesterday, and day before yesterday
+                    if article_date and article_date >= day_before_yesterday:
                         all_articles.append({
                             'title': getattr(entry, 'title', 'No Title'),
                             'link': getattr(entry, 'link', ''),
@@ -93,7 +93,7 @@ def fetch_news_articles():
     
     # Remove duplicates based on title similarity
     unique_articles = remove_duplicates(all_articles)
-    print(f"Found {len(unique_articles)} unique articles from today and yesterday")
+    print(f"Found {len(unique_articles)} unique articles from the last 3 days (today, yesterday, day before yesterday)")
     return unique_articles
 
 def extract_domain(url):
@@ -496,7 +496,7 @@ class handler(BaseHTTPRequestHandler):
             try:
                 print(f"[{datetime.utcnow().isoformat()}] Starting RSS feed fetch...")
                 articles = fetch_news_articles()
-                print(f"[{datetime.utcnow().isoformat()}] Found {len(articles) if articles else 0} articles from today/yesterday")
+                print(f"[{datetime.utcnow().isoformat()}] Found {len(articles) if articles else 0} articles from last 3 days")
             except Exception as e:
                 print(f"RSS fetch error: {e}")
                 self.send_response(500)
@@ -511,7 +511,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'text/plain')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(b"No articles found from today or yesterday.")
+                self.wfile.write(b"No articles found from the last 3 days.")
                 return
             
             # Ensure we have enough articles for processing
@@ -550,7 +550,7 @@ class handler(BaseHTTPRequestHandler):
                 send_daily_email(summarized_articles)
                 
                 execution_time = (datetime.utcnow() - start_time).total_seconds()
-                success_msg = f"Success! Daily email sent with {len(summarized_articles)} high-quality AI articles (today/yesterday only) in {execution_time:.1f}s at {datetime.utcnow().isoformat()}."
+                success_msg = f"Success! Daily email sent with {len(summarized_articles)} high-quality AI articles (last 3 days) in {execution_time:.1f}s at {datetime.utcnow().isoformat()}."
                 print(success_msg)
                 
                 # Log performance metrics
