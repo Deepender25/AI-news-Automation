@@ -192,6 +192,17 @@ def create_daily_email(articles):
         # Clean and format article data
         title = article.get('title', 'Untitled Article').strip()
         link = article.get('link', '#').strip()
+        source = article.get('source', 'Unknown Source').strip()
+        
+        # Format the article date
+        article_date = article.get('date')
+        if article_date:
+            if hasattr(article_date, 'strftime'):
+                date_str = article_date.strftime("%B %d, %Y")
+            else:
+                date_str = str(article_date)
+        else:
+            date_str = "Date not available"
         
         # Get AI summary and clean it
         summary_text = article.get('ai_summary', '')
@@ -208,9 +219,15 @@ def create_daily_email(articles):
         
         articles_html += f"""
         <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0;">
-            <h2 style="color: #333333; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; line-height: 1.4;">
-                {title}
+            <h2 style="color: #333333; font-size: 18px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.4;">
+                {i}. {title}
             </h2>
+            
+            <div style="margin-bottom: 15px;">
+                <span style="color: #888888; font-size: 13px; font-weight: 500;">
+                    {date_str} | Source: {source}
+                </span>
+            </div>
             
             <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0; text-align: justify;">
                 {summary_text}
@@ -218,7 +235,7 @@ def create_daily_email(articles):
             
             <p style="margin: 0;">
                 <a href="{link}" style="color: #0066cc; text-decoration: none; font-size: 14px; font-weight: 500;">
-                    Read Full Article →
+                    Read Full Article: {link}
                 </a>
             </p>
         </div>
