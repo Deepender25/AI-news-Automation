@@ -20,7 +20,7 @@ This will give you a real-time report on your configuration. If any variables ar
 - **AI-Powered Summarization**: Uses Google Gemini to create concise, informative summaries.
 - **Smart Content Filtering**: Filters for recent articles and removes duplicates.
 - **Professional Email Design**: Delivers a clean, modern, and mobile-friendly HTML email.
-- **Automated Daily Delivery**: Runs on a schedule using cron-job.org.
+- **Automated Daily Delivery**: Runs on a schedule using EasyCron.
 
 ## 📁 Project Structure
 
@@ -74,27 +74,29 @@ If it reports success, your application is ready!
 
 ## 📅 Scheduling
 
-The daily job is scheduled using **cron-job.org**, a free and reliable cron job service. This triggers the Vercel function at your specified time each day.
+The daily job is scheduled using **EasyCron**, a free and reliable cron job service. This triggers the Vercel function at your specified time each day.
 
 **Setup Instructions:**
-1. Go to [cron-job.org](https://cron-job.org) and create a free account
+1. Go to [EasyCron.com](https://www.easycron.com/) and create a free account
 2. Create a new cron job with your Vercel URL: `https://your-app.vercel.app/api/index`
-3. Set the schedule (e.g., `30 15 * * *` for 3:30 PM UTC / 9:00 PM IST daily)
+3. Set the schedule (e.g., `29 18 * * *` for 6:29 PM UTC / 11:59 PM IST daily)
 4. Enable the job
 
 **Benefits:**
-- ✅ Free and reliable
-- ✅ Precise timing (no delays)
-- ✅ Easy to modify schedule
-- ✅ Execution history and monitoring
+- ✅ Free tier available (2 cron jobs)
+- ✅ Reliable execution timing
+- ✅ Easy web-based interface
+- ✅ Execution history and logs
+- ✅ Handles longer timeouts better than some alternatives
 
 ## 🔍 Troubleshooting
 
 If the health check at `/api/check` shows that all variables are set but the application still fails, consider the following:
 
 - **Check Vercel Function Logs**: Go to the "Logs" tab in your Vercel project dashboard.
-- **Check Cron-job.org Logs**: View execution history in your cron-job.org dashboard.
+- **Check EasyCron Logs**: View execution history in your EasyCron dashboard.
 - **Invalid API Keys**: Ensure your API keys are correct and have the necessary permissions.
 - **Manual Test**: Visit `https://your-app.vercel.app/api/index` directly to test the automation.
 - **Test Health Check**: Use `/api/check` to verify environment variables.
 - **Basic Availability**: Check `/api/simple` to ensure the service is responsive.
+- **Timeout Behavior**: EasyCron may show "timeout" errors, but if you receive the email, the function worked correctly. Vercel functions have a 5-minute timeout, while HTTP clients may timeout earlier.

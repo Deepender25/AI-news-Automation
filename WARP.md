@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-AI News Automation is a streamlined news aggregation system that fetches AI/technology news from RSS feeds, summarizes articles using Google Gemini AI, and sends formatted email briefings. The system runs on Vercel serverless functions and is triggered by cron-job.org for reliable daily scheduling.
+AI News Automation is a streamlined news aggregation system that fetches AI/technology news from RSS feeds, summarizes articles using Google Gemini AI, and sends formatted email briefings. The system runs on Vercel serverless functions and is triggered by EasyCron for reliable daily scheduling.
 
 ## Development Commands
 
@@ -73,10 +73,11 @@ The system operates as a simple, reliable serverless application:
 - 5-minute (300-second) timeout limit per function execution
 
 **External Scheduling**
-- cron-job.org makes HTTP GET request to `/api/index` daily
-- Reliable timing with no delays (unlike GitHub Actions)
-- Free service with execution history and monitoring
-- Easy schedule modification through web interface
+- EasyCron makes HTTP GET request to `/api/index` daily at 11:59 PM IST
+- Reliable timing with longer timeout handling than many alternatives
+- Free tier with 2 cron jobs available
+- Web-based interface with execution history and monitoring
+- Better timeout handling for longer-running functions
 
 ## Key Technical Patterns
 
@@ -111,9 +112,10 @@ Update the prompt in `summarize_with_gemini()` function. Maintain the requiremen
 Edit the `create_daily_email()` function for visual modifications. Maintain responsive design principles and test across email clients.
 
 ### Scheduling Adjustments
-- **cron-job.org**: Modify schedule in the web dashboard
-- Uses standard cron syntax (e.g., `30 15 * * *` for 3:30 PM UTC daily)
-- Supports timezone conversion and scheduling preview
+- **EasyCron**: Modify schedule in the web dashboard
+- Uses standard cron syntax (e.g., `29 18 * * *` for 6:29 PM UTC / 11:59 PM IST daily)
+- Current schedule: Daily at 11:59 PM IST
+- Web interface supports easy schedule modification and testing
 
 ## Troubleshooting Common Issues
 
@@ -134,8 +136,10 @@ Edit the `create_daily_email()` function for visual modifications. Maintain resp
 
 ### Deployment-Specific Issues
 - **Vercel**: Environment variables must be set in project dashboard
-- **cron-job.org**: Check execution history for failed requests
-- **Timeout Issues**: Ensure processing completes within 5-minute limit
+- **EasyCron**: Check execution history and logs for failed requests
+- **Timeout Issues**: EasyCron may report timeouts while Vercel function succeeds
+- **Success Indicator**: If email is received, automation worked despite HTTP timeout
+- **Processing Time**: Function typically takes 2-4 minutes; Vercel allows up to 5 minutes
 
 ## File Structure Context
 
