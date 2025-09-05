@@ -1,18 +1,41 @@
-name: Daily AI News Email
+name: Daily AI News Automation
 
 on:
   schedule:
-    # Run daily at 11:55 PM UTC (6:25 AM IST)
-    - cron: '55 23 * * *'
-  workflow_dispatch: # Allow manual trigger
+    - cron: '10 40 * * *'
+  
+  # Allow manual triggering from GitHub UI
+  workflow_dispatch:
 
 jobs:
-  send-daily-news:
+  trigger-news:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Send Daily Email
-      run: |
-        # Call stable production URL
-        curl -X GET "https://ai-news-automation.vercel.app" || \
-        echo "Endpoint failed - check deployment status"
+      - name: Trigger AI News Automation
+        run: |
+          echo "🚀 Triggering AI News Automation..."
+          echo "📡 Sending request to Vercel endpoint..."
+          
+          response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X GET \
+            -H "User-Agent: GitHub-Actions-Daily-News" \
+            --max-time 300 \
+            https://ai-news-automation.vercel.app/api/index)
+          
+          http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+          
+          echo "📊 HTTP Status: $http_code"
+          echo "📝 Response: $body"
+          
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Success! AI News email sent successfully"
+          else
+            echo "❌ Failed with status code: $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: |
+          echo "🎯 Daily AI News automation completed at $(date)"
