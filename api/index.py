@@ -36,10 +36,10 @@ def fetch_news_articles():
     
     # Set global socket timeout for RSS requests
     original_timeout = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(8)  # 8 second timeout per feed
+    socket.setdefaulttimeout(5)  # Reduced to 5 seconds per feed
     
-    # Process only first 5 feeds to avoid timeout
-    feeds_to_process = RSS_FEEDS[:5]  
+    # Process only first 3 feeds to avoid timeout issues
+    feeds_to_process = RSS_FEEDS[:3]  # Reduced from 5 to 3
     
     try:
         for url in feeds_to_process:
@@ -154,8 +154,8 @@ def summarize_with_gemini(articles):
         # Create individual summaries for each article
         summarized_articles = []
         
-        # Process more articles to get at least 10 in email
-        articles_to_process = articles[:15]  # Increase back to 15 for better coverage
+        # Process fewer articles to avoid timeout
+        articles_to_process = articles[:8]  # Reduced to 8 articles for faster processing
         
         for i, article in enumerate(articles_to_process):
             try:
@@ -378,6 +378,9 @@ def send_daily_email(articles):
 # --- Vercel Handler Function ---
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        import json
+        start_time = datetime.utcnow()
+        
         try:
             # Check if this is a test endpoint
             if hasattr(self, 'path') and '/test' in self.path:
@@ -396,12 +399,23 @@ class handler(BaseHTTPRequestHandler):
                     'status': 'Environment configured'
                 }
                 
-                import json
                 self.wfile.write(json.dumps(env_check).encode())
                 return
             
-            # Fetch news articles
-            articles = fetch_news_articles()
+            # Step 1: Fetch news articles with timeout protection
+            try:
+                print(f"[{datetime.utcnow().isoformat()}] Starting RSS feed fetch...")
+                articles = fetch_news_articles()
+                print(f"[{datetime.utcnow().isoformat()}] Found {len(articles) if articles else 0} articles")
+            except Exception as e:
+                print(f"RSS fetch error: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'text/plain')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(f"RSS fetch failed: {str(e)}".encode())
+                return
+                
             if not articles:
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
@@ -410,32 +424,50 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(b"No articles found today.")
                 return
             
-            # Generate AI summaries for each article
-            summarized_articles = summarize_with_gemini(articles)
-            
-            # Send single daily email with all articles
+            # Step 2: Generate AI summaries with timeout protection
             try:
+                print(f"[{datetime.utcnow().isoformat()}] Starting AI summarization...")
+                summarized_articles = summarize_with_gemini(articles)
+                print(f"[{datetime.utcnow().isoformat()}] Generated {len(summarized_articles)} summaries")
+            except Exception as e:
+                print(f"AI summarization error: {e}")
+                # Use articles without AI summaries as fallback
+                summarized_articles = articles[:10]
+                for article in summarized_articles:
+                    article['ai_summary'] = create_detailed_fallback_summary(article)
+            
+            # Step 3: Send email with timeout protection
+            try:
+                print(f"[{datetime.utcnow().isoformat()}] Sending email...")
                 send_daily_email(summarized_articles)
+                
+                execution_time = (datetime.utcnow() - start_time).total_seconds()
+                success_msg = f"Success! Daily email sent with {len(summarized_articles)} articles in {execution_time:.1f}s at {datetime.utcnow().isoformat()}."
+                print(success_msg)
                 
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(f"Success! Daily email sent with {len(summarized_articles)} articles at {datetime.utcnow().isoformat()}.".encode())
+                self.wfile.write(success_msg.encode())
                 
             except Exception as e:
+                error_msg = f"Failed to send daily email: {str(e)}"
+                print(f"Email error: {error_msg}")
                 self.send_response(500)
                 self.send_header('Content-type', 'text/plain')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(f"Failed to send daily email: {str(e)}".encode())
+                self.wfile.write(error_msg.encode())
             
         except Exception as e:
+            error_msg = f"Unexpected error: {str(e)}"
+            print(f"Handler error: {error_msg}")
             self.send_response(500)
             self.send_header('Content-type', 'text/plain')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(f"Error: {str(e)}".encode())
+            self.wfile.write(error_msg.encode())
     
     def do_POST(self):
         self.do_GET()
