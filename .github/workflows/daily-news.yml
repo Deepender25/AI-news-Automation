@@ -2,33 +2,35 @@ name: Daily AI News Automation
 
 on:
   schedule:
-    - cron: '10 40 * * *'
-  
+    - cron: "10 40 * * *"
+
   # Allow manual triggering from GitHub UI
   workflow_dispatch:
 
 jobs:
   trigger-news:
     runs-on: ubuntu-latest
-    
+    # Only run on main branch to prevent duplicate emails
+    if: github.ref == 'refs/heads/main'
+
     steps:
       - name: Trigger AI News Automation
         run: |
           echo "🚀 Triggering AI News Automation..."
           echo "📡 Sending request to Vercel endpoint..."
-          
+
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X GET \
             -H "User-Agent: GitHub-Actions-Daily-News" \
             --max-time 300 \
             https://ai-news-automation.vercel.app/api/index)
-          
+
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
-          
+
           echo "📊 HTTP Status: $http_code"
           echo "📝 Response: $body"
-          
+
           if [ $http_code -eq 200 ]; then
             echo "✅ Success! AI News email sent successfully"
           else
