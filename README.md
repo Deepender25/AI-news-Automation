@@ -20,7 +20,7 @@ This will give you a real-time report on your configuration. If any variables ar
 - **AI-Powered Summarization**: Uses Google Gemini to create concise, informative summaries.
 - **Smart Content Filtering**: Filters for recent articles and removes duplicates.
 - **Professional Email Design**: Delivers a clean, modern, and mobile-friendly HTML email.
-- **Automated Daily Delivery**: Runs on a schedule using a GitHub Action.
+- **Automated Daily Delivery**: Runs on a schedule using cron-job.org.
 
 ## 📁 Project Structure
 
@@ -29,13 +29,11 @@ This will give you a real-time report on your configuration. If any variables ar
 ├── api/
 │   ├── index.py        # Main automation logic
 │   ├── check.py        # Health check and debugging endpoint
-│   └── ...
-├── .github/
-│   └── workflows/
-│       └── daily-news.yml # GitHub Action for scheduled runs
+│   └── simple.py       # Basic availability check
 ├── vercel.json         # Vercel deployment configuration
 ├── requirements.txt    # Python dependencies
-└── README.md           # This file
+├── WARP.md            # Development guidance
+└── README.md          # This file
 ```
 
 ## 🔧 Setup & Deployment
@@ -76,21 +74,27 @@ If it reports success, your application is ready!
 
 ## 📅 Scheduling
 
-The daily job is scheduled to run via a GitHub Action, defined in `.github/workflows/daily-news.yml`. You can change the schedule by editing the `cron` property in that file.
+The daily job is scheduled using **cron-job.org**, a free and reliable cron job service. This triggers the Vercel function at your specified time each day.
 
-Example:
-```yaml
-on:
-  schedule:
-    # Runs at 10:10 UTC daily
-    - cron: '10 10 * * *'
-```
+**Setup Instructions:**
+1. Go to [cron-job.org](https://cron-job.org) and create a free account
+2. Create a new cron job with your Vercel URL: `https://your-app.vercel.app/api/index`
+3. Set the schedule (e.g., `30 15 * * *` for 3:30 PM UTC / 9:00 PM IST daily)
+4. Enable the job
+
+**Benefits:**
+- ✅ Free and reliable
+- ✅ Precise timing (no delays)
+- ✅ Easy to modify schedule
+- ✅ Execution history and monitoring
 
 ## 🔍 Troubleshooting
 
 If the health check at `/api/check` shows that all variables are set but the application still fails, consider the following:
 
 - **Check Vercel Function Logs**: Go to the "Logs" tab in your Vercel project dashboard.
-- **Check GitHub Action Logs**: Go to the "Actions" tab in your GitHub repository to see if the scheduled job ran successfully.
+- **Check Cron-job.org Logs**: View execution history in your cron-job.org dashboard.
 - **Invalid API Keys**: Ensure your API keys are correct and have the necessary permissions.
-- **Test Email Sending**: Visit `/api/test-now` to send a simple test email. This can help isolate issues with your Brevo configuration.
+- **Manual Test**: Visit `https://your-app.vercel.app/api/index` directly to test the automation.
+- **Test Health Check**: Use `/api/check` to verify environment variables.
+- **Basic Availability**: Check `/api/simple` to ensure the service is responsive.
