@@ -20,15 +20,19 @@ def fetch_news_articles():
         "https://marktechpost.com/feed/",
         # Academic & Research  
         "https://research.google/blog/rss/",
-        # Additional sources (lower priority)
+        # Additional sources for more content
         "http://feeds.feedburner.com/AINews",
         "https://www.wired.com/feed/tag/ai/latest/rss",
         "https://ai-techpark.com/category/ai/feed/",
+        # Extra feeds for better coverage
+        "https://bair.berkeley.edu/blog/feed.xml",
+        "https://www.404media.co/rss/",
+        "https://ai2people.com/feed/"
     ]
     
     all_articles = []
     today = datetime.utcnow().date()
-    yesterday = today - timedelta(days=1)
+    three_days_ago = today - timedelta(days=3)  # Extended to 3 days for more articles
     
     # Set global socket timeout for RSS requests
     original_timeout = socket.getdefaulttimeout()
@@ -61,8 +65,8 @@ def fetch_news_articles():
                         except (TypeError, ValueError):
                             continue
                     
-                    # Include articles from today and yesterday
-                    if article_date and article_date >= yesterday:
+                    # Include articles from the last 3 days
+                    if article_date and article_date >= three_days_ago:
                         all_articles.append({
                             'title': getattr(entry, 'title', 'No Title'),
                             'link': getattr(entry, 'link', ''),
