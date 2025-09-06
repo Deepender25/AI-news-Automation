@@ -104,7 +104,6 @@ ai-news-automation/
 ├── vercel.json         # ⚙️ Vercel deployment config (5-min timeout)
 ├── requirements.txt    # 📦 Python dependencies
 ├── .gitignore         # 🚫 Git ignore rules
-├── WARP.md            # 🛠️ Development guidance
 └── README.md          # 📖 This documentation
 ```
 
