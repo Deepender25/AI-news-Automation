@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 venv/
 .vercel
+
+# Ignore WARP.md (development guidance file)
+WARP.md
