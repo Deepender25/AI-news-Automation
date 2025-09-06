@@ -67,30 +67,31 @@ In the rapidly evolving world of AI, staying updated with the latest breakthroug
 - **Vercel Deployment**: Zero-maintenance serverless architecture
 - **5-Minute Timeout**: Optimized for complex AI processing workflows
 - **Health Monitoring**: Built-in diagnostics and environment validation
-- **Automated Scheduling**: EasyCron integration for reliable daily execution
+- **Automated Scheduling**: GitHub Actions for reliable daily execution at 11:30 PM IST
 
 ## 🏗️ Architecture
 
 ```mermaid
 graph TD
-    A[EasyCron Scheduler] --> B[Vercel Function]
-    B --> C[RSS Feed Fetcher]
+    A[GitHub Actions] --> B[Vercel Function]
+    B --> C[Parallel RSS Fetcher]
     C --> D[Article Filter & Deduplication]
-    D --> E[AI Quality Evaluation]
-    E --> F[AI Summarization]
-    F --> G[Email Generation]
-    G --> H[Brevo Email Delivery]
+    D --> E[Fast AI Summarization]
+    E --> F[Email Generation]
+    F --> G[Brevo Email Delivery]
     
-    I[Health Check Endpoint] --> J[Environment Validation]
-    K[Simple Check Endpoint] --> L[Basic Availability]
+    H[Health Check Endpoint] --> I[Environment Validation]
+    J[Performance Monitor] --> K[Step-by-Step Timing]
 ```
 
-**Data Flow:**
-1. **Collection**: Fetch articles from 10+ RSS feeds (last 3 days)
-2. **Evaluation**: AI rates each article 1-10 for interest/knowledge
-3. **Selection**: Choose top 10-15 highest-rated articles
-4. **Summarization**: Generate detailed AI summaries
+**Optimized Data Flow:**
+1. **Parallel Collection**: Fetch articles from 3 fastest RSS feeds (parallel processing)
+2. **Smart Selection**: Choose top 8 articles for processing
+3. **Fast Summarization**: Generate AI summaries using Gemini 1.5 Flash
+4. **Performance Monitoring**: Track timing for each step
 5. **Delivery**: Send professional HTML email via Brevo
+
+**Performance Target: <200 seconds total execution**
 
 ## 📁 Project Structure
 
@@ -196,7 +197,22 @@ https://your-app-name.vercel.app/api/check
 
 ## ⏰ Automation Setup
 
-### EasyCron Configuration
+### GitHub Actions (Automatic)
+The system runs automatically via GitHub Actions workflow:
+
+- **Schedule**: Daily at 11:30 PM IST (6:00 PM UTC)
+- **Reliability**: Built-in retry logic and error handling
+- **Monitoring**: Detailed execution logs and performance metrics
+- **Zero Configuration**: Works automatically once deployed
+
+**Benefits:**
+- ✅ **Completely Free**: No external services required
+- ✅ **Reliable**: GitHub's infrastructure handles scheduling
+- ✅ **Transparent**: Full execution logs in Actions tab
+- ✅ **Performance Tracking**: Step-by-step timing analysis
+
+### Manual Trigger (Optional)
+You can also trigger the automation manually:
 
 1. **Create Account**: Visit [https://www.easycron.com/](https://www.easycron.com/)
 2. **Sign up** for a free account (supports 2 cron jobs)

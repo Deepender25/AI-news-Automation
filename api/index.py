@@ -9,92 +9,89 @@ import re
 
 # --- Enhanced Core Functions ---
 def fetch_news_articles():
-    """Fetch AI news from comprehensive RSS feed list - today, yesterday, and day before yesterday"""
+    """Optimized RSS fetching with parallel processing for sub-30 second execution"""
     import socket
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     
-    # Prioritized RSS feeds (most reliable sources first)
+    start_time = time.time()
+    
+    # Only fastest, most reliable RSS feeds
     RSS_FEEDS = [
-        # Core AI/ML News (most reliable)
         "https://www.technologyreview.com/tag/artificial-intelligence/feed/",
         "https://venturebeat.com/category/ai/feed/",
-        "https://marktechpost.com/feed/",
-        # Academic & Research  
-        "https://research.google/blog/rss/",
-        # Additional sources for more content
-        "http://feeds.feedburner.com/AINews",
-        "https://www.wired.com/feed/tag/ai/latest/rss",
-        "https://ai-techpark.com/category/ai/feed/",
-        # Extra feeds for better coverage
-        "https://bair.berkeley.edu/blog/feed.xml",
-        "https://www.404media.co/rss/",
-        "https://ai2people.com/feed/"
+        "https://marktechpost.com/feed/"
     ]
     
+    def fetch_single_feed(url):
+        """Fetch articles from single RSS feed with aggressive timeout"""
+        articles = []
+        original_timeout = socket.getdefaulttimeout()
+        
+        try:
+            socket.setdefaulttimeout(3)  # 3-second timeout per feed
+            feed = feedparser.parse(url)
+            
+            if not hasattr(feed, 'entries') or not feed.entries:
+                return articles
+                
+            today = datetime.utcnow().date()
+            two_days_ago = today - timedelta(days=2)
+            
+            # Process only first 6 entries per feed for speed
+            for entry in feed.entries[:6]:
+                article_date = None
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    try:
+                        article_date = datetime(*entry.published_parsed[:6]).date()
+                    except (TypeError, ValueError):
+                        continue
+                elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                    try:
+                        article_date = datetime(*entry.updated_parsed[:6]).date()
+                    except (TypeError, ValueError):
+                        continue
+                
+                if article_date and article_date >= two_days_ago:
+                    articles.append({
+                        'title': getattr(entry, 'title', 'No Title'),
+                        'link': getattr(entry, 'link', ''),
+                        'summary': getattr(entry, 'summary', '')[:300],
+                        'date': article_date,
+                        'source': extract_domain(url)
+                    })
+                    
+        except Exception as e:
+            print(f"Error fetching feed {url}: {e}")
+        finally:
+            socket.setdefaulttimeout(original_timeout)
+            
+        return articles
+    
     all_articles = []
-    today = datetime.utcnow().date()
-    day_before_yesterday = today - timedelta(days=2)  # Today, yesterday, and day before yesterday
     
-    # Set global socket timeout for RSS requests
-    original_timeout = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(4)  # Faster timeout for efficiency
-    
-    # Process more feeds but with faster timeouts to get 10-15 articles
-    feeds_to_process = RSS_FEEDS[:6]  # Increased to 6 feeds for better coverage
-    
+    # Parallel RSS fetching with 10-second total timeout
     try:
-        for url in feeds_to_process:
-            try:
-                # Parse feed with built-in timeout via socket setting
-                feed = feedparser.parse(url)
-                
-                # Quick check if feed is valid
-                if not hasattr(feed, 'entries') or not feed.entries:
-                    continue
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_url = {executor.submit(fetch_single_feed, url): url for url in RSS_FEEDS}
+            
+            for future in as_completed(future_to_url, timeout=10):
+                try:
+                    articles = future.result()
+                    all_articles.extend(articles)
+                except Exception as e:
+                    print(f"Feed fetch exception: {e}")
                     
-                for entry in feed.entries[:15]:  # Check more entries per feed
-                    # Get article date
-                    article_date = None
-                    if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                        try:
-                            article_date = datetime(*entry.published_parsed[:6]).date()
-                        except (TypeError, ValueError):
-                            continue
-                    elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
-                        try:
-                            article_date = datetime(*entry.updated_parsed[:6]).date()
-                        except (TypeError, ValueError):
-                            continue
-                    
-                    # Include articles from today, yesterday, and day before yesterday
-                    if article_date and article_date >= day_before_yesterday:
-                        all_articles.append({
-                            'title': getattr(entry, 'title', 'No Title'),
-                            'link': getattr(entry, 'link', ''),
-                            'summary': getattr(entry, 'summary', '')[:600],  # Slightly longer for better context
-                            'date': article_date,
-                            'source': extract_domain(url)
-                        })
-                        
-                        # Stop early if we have enough articles for processing
-                        if len(all_articles) >= 40:
-                            break
-                            
-            except Exception as e:
-                print(f"Error fetching feed {url}: {e}")
-                continue  # Continue with next feed
-                
-            # Early exit if we have enough articles
-            if len(all_articles) >= 40:
-                break
-                
-    finally:
-        # Restore original timeout
-        socket.setdefaulttimeout(original_timeout)
+    except Exception as e:
+        print(f"Parallel fetch timeout or error: {e}")
     
-    # Remove duplicates based on title similarity
+    # Quick deduplication
     unique_articles = remove_duplicates(all_articles)
-    print(f"Found {len(unique_articles)} unique articles from the last 3 days (today, yesterday, day before yesterday)")
-    return unique_articles
+    
+    fetch_time = time.time() - start_time
+    print(f"RSS fetch completed in {fetch_time:.2f}s with {len(unique_articles)} articles")
+    
+    return unique_articles[:12]  # Limit to 12 articles for faster processing
 
 def extract_domain(url):
     """Extract clean, readable domain name from URL for source attribution"""
@@ -141,147 +138,91 @@ def remove_duplicates(articles):
     return unique_articles
 
 def summarize_with_gemini(articles):
-    """Create AI summaries for 10-15 interesting and knowledgeable articles"""
+    """Optimized AI summarization for sub-120 second execution"""
+    import time
+    
+    start_time = time.time()
     gemini_api_key = os.getenv("GEMINI_API_KEY")
+    
     if not articles: 
         return []
     if not gemini_api_key: 
-        return articles[:15]  # Return articles without AI summaries
+        return articles[:8]  # Return articles without AI summaries
     
     try:
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')  # Use faster model
         
-        # First, filter and rank articles by AI for interest and knowledge value
-        print(f"Evaluating {len(articles)} articles for interest and knowledge...")
-        
-        # Step 1: Quick evaluation to select most interesting articles
-        interesting_articles = []
-        
-        for i, article in enumerate(articles[:25]):  # Evaluate up to 25 articles
-            try:
-                # Quick evaluation prompt
-                eval_prompt = f"""Rate this AI/tech article on a scale of 1-10 for:
-1. How interesting/engaging it is for AI professionals
-2. How much new knowledge or insights it provides
-3. How significant the development/announcement is
-
-Only respond with a number (1-10). Consider:
-- Breaking news, major announcements = 8-10
-- Significant research findings = 7-9  
-- Industry insights, new tools = 6-8
-- General updates, minor news = 4-6
-- Repetitive or low-value content = 1-4
-
-Title: {article['title']}
-Source: {article['source']}
-Content: {article.get('summary', '')[:400]}
-
-Rating (1-10):"""
-                
-                response = model.generate_content(eval_prompt)
-                
-                if response and response.text and response.text.strip():
-                    try:
-                        rating = float(response.text.strip())
-                        if rating >= 6.0:  # Only keep articles rated 6 or higher
-                            article['ai_rating'] = rating
-                            interesting_articles.append(article)
-                            print(f"Article '{article['title'][:50]}...' rated {rating}")
-                    except ValueError:
-                        # If rating fails, include article anyway
-                        article['ai_rating'] = 5.0
-                        interesting_articles.append(article)
-                
-                # Small delay to avoid rate limiting
-                if i > 0 and i % 5 == 0:
-                    import time
-                    time.sleep(0.5)
-                    
-            except Exception as e:
-                print(f"Error evaluating article: {e}")
-                # Include article if evaluation fails
-                article['ai_rating'] = 5.0
-                interesting_articles.append(article)
-        
-        # Sort by rating and take top 15
-        interesting_articles.sort(key=lambda x: x.get('ai_rating', 0), reverse=True)
-        selected_articles = interesting_articles[:15]
-        
-        # Ensure we have at least 10 articles
-        if len(selected_articles) < 10 and len(articles) >= 10:
-            # Add more articles to reach minimum 10
-            remaining_articles = [a for a in articles if a not in selected_articles]
-            selected_articles.extend(remaining_articles[:10-len(selected_articles)])
-        
-        print(f"Selected {len(selected_articles)} articles for detailed summarization")
-        
-        # Step 2: Create detailed summaries for selected articles
+        # Process only top 8 articles for speed
+        articles_to_process = articles[:8]
         summarized_articles = []
         
-        for i, article in enumerate(selected_articles):
+        print(f"Processing {len(articles_to_process)} articles with optimized AI...")
+        
+        for i, article in enumerate(articles_to_process):
             try:
-                # Enhanced prompt for better summaries
-                prompt = f"""Create a comprehensive, informative summary (4-5 sentences) that provides readers with substantial knowledge about this AI/tech development.
-
-REQUIREMENTS:
-- Write 4-5 well-structured sentences
-- Include specific details, numbers, company names, or technical aspects when available
-- Explain the significance and potential impact
-- Make it engaging and informative for AI professionals
-- Use clear, professional language without markdown formatting
-- Focus on what makes this development important or interesting
+                # Simplified, faster prompt
+                prompt = f"""Summarize this AI/tech article in 3-4 clear sentences. Focus on key facts and why it matters.
 
 Title: {article['title']}
 Source: {article['source']}
-Date: {article['date']}
-Original content: {article.get('summary', '')[:500]}
+Content: {article.get('summary', '')[:300]}
 
-Create a detailed, knowledgeable summary:"""
+Summary:"""
                 
                 response = model.generate_content(prompt)
                 
                 if response and response.text and response.text.strip():
                     ai_summary = response.text.strip()
-                    # Ensure we have a substantial summary
-                    if len(ai_summary) > 150:
+                    if len(ai_summary) > 50:
                         enhanced_article = article.copy()
                         enhanced_article['ai_summary'] = ai_summary
                         summarized_articles.append(enhanced_article)
-                        print(f"✅ Summarized: {article['title'][:50]}...")
+                        print(f"✅ {i+1}/8: {article['title'][:40]}...")
                         continue
                 
-                # If AI summary failed, create a detailed fallback
-                print(f"⚠️ AI summary failed for: {article['title'][:50]}...")
+                # Quick fallback
                 enhanced_article = article.copy()
-                fallback_summary = create_detailed_fallback_summary(article)
-                enhanced_article['ai_summary'] = fallback_summary
+                enhanced_article['ai_summary'] = create_quick_fallback_summary(article)
                 summarized_articles.append(enhanced_article)
                 
             except Exception as e:
-                print(f"Error summarizing article {article['title']}: {e}")
-                # Add article with detailed fallback
+                print(f"Error summarizing article {i+1}: {e}")
                 enhanced_article = article.copy()
-                enhanced_article['ai_summary'] = create_detailed_fallback_summary(article)
+                enhanced_article['ai_summary'] = create_quick_fallback_summary(article)
                 summarized_articles.append(enhanced_article)
-            
-            # Small delay between summaries
-            if i > 0 and i % 3 == 0:
-                import time
-                time.sleep(0.3)
         
-        print(f"Completed summarization of {len(summarized_articles)} articles")
+        ai_time = time.time() - start_time
+        print(f"AI summarization completed in {ai_time:.2f}s for {len(summarized_articles)} articles")
         return summarized_articles
         
     except Exception as e:
         print(f"Gemini AI error: {e}")
-        # Return articles with detailed fallback summaries
+        # Quick fallback articles
         fallback_articles = []
-        for article in articles[:15]:
+        for article in articles[:8]:
             enhanced_article = article.copy()
-            enhanced_article['ai_summary'] = create_detailed_fallback_summary(article)
+            enhanced_article['ai_summary'] = create_quick_fallback_summary(article)
             fallback_articles.append(enhanced_article)
         return fallback_articles
+
+def create_quick_fallback_summary(article):
+    """Create fast fallback summary for speed optimization"""
+    title = article['title']
+    original_summary = article.get('summary', '')
+    source = article.get('source', 'Unknown Source')
+    
+    if original_summary and len(original_summary) > 50:
+        # Use first 2 sentences of original summary
+        sentences = original_summary.split('. ')[:2]
+        summary_text = '. '.join(sentences) + '.'
+        if len(summary_text) > 200:
+            summary_text = summary_text[:200] + '...'
+    else:
+        # Generate based on title
+        summary_text = f"This article from {source} discusses developments in {title.lower()}. The announcement highlights ongoing innovation in artificial intelligence and technology."
+    
+    return summary_text
 
 def create_detailed_fallback_summary(article):
     """Create a comprehensive fallback summary when AI fails"""
@@ -469,7 +410,11 @@ def send_daily_email(articles):
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         import json
-        start_time = datetime.utcnow()
+        import time
+        
+        # Performance monitoring
+        start_time = time.time()
+        step_times = {}
         
         try:
             # Check if this is a test endpoint
@@ -479,7 +424,6 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 
-                # Quick environment check
                 env_check = {
                     'timestamp': datetime.utcnow().isoformat(),
                     'gemini_key_set': bool(os.getenv("GEMINI_API_KEY")),
@@ -492,13 +436,19 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(env_check).encode())
                 return
             
-            # Step 1: Fetch news articles with timeout protection
+            print(f"🚀 Starting optimized AI News automation at {datetime.utcnow().isoformat()}")
+            print(f"🎯 Target execution time: <200 seconds")
+            
+            # Step 1: RSS Feed Processing
+            step_start = time.time()
             try:
-                print(f"[{datetime.utcnow().isoformat()}] Starting RSS feed fetch...")
+                print(f"📰 [STEP 1/3] Fetching RSS feeds...")
                 articles = fetch_news_articles()
-                print(f"[{datetime.utcnow().isoformat()}] Found {len(articles) if articles else 0} articles from last 3 days")
+                step_times['rss_fetch'] = time.time() - step_start
+                print(f"✅ RSS: {len(articles) if articles else 0} articles in {step_times['rss_fetch']:.1f}s")
             except Exception as e:
-                print(f"RSS fetch error: {e}")
+                step_times['rss_fetch'] = time.time() - step_start
+                print(f"❌ RSS fetch failed in {step_times['rss_fetch']:.1f}s: {e}")
                 self.send_response(500)
                 self.send_header('Content-type', 'text/plain')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -507,57 +457,56 @@ class handler(BaseHTTPRequestHandler):
                 return
                 
             if not articles:
+                total_time = time.time() - start_time
+                print(f"❌ No articles found in {total_time:.1f}s")
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(b"No articles found from the last 3 days.")
+                self.wfile.write(b"No articles found today.")
                 return
             
-            # Ensure we have enough articles for processing
-            if len(articles) < 5:
-                self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(f"Only {len(articles)} articles found - need at least 5 for processing.".encode())
-                return
-            
-            # Step 2: Generate AI summaries with timeout protection
+            # Step 2: AI Summarization
+            step_start = time.time()
             try:
-                print(f"[{datetime.utcnow().isoformat()}] Starting AI evaluation and summarization...")
+                print(f"🤖 [STEP 2/3] AI summarization ({len(articles)} articles)...")
                 summarized_articles = summarize_with_gemini(articles)
-                print(f"[{datetime.utcnow().isoformat()}] Generated {len(summarized_articles)} high-quality summaries")
-                
-                # Ensure we have 10-15 articles as requested
-                if len(summarized_articles) < 10:
-                    print(f"Warning: Only {len(summarized_articles)} articles processed, target was 10-15")
-                elif len(summarized_articles) > 15:
-                    summarized_articles = summarized_articles[:15]
-                    print(f"Trimmed to 15 articles as requested")
+                step_times['ai_processing'] = time.time() - step_start
+                print(f"✅ AI: {len(summarized_articles)} summaries in {step_times['ai_processing']:.1f}s")
                     
             except Exception as e:
-                print(f"AI summarization error: {e}")
-                # Use articles without AI summaries as fallback
-                summarized_articles = articles[:12]  # Take 12 for middle ground
+                step_times['ai_processing'] = time.time() - step_start
+                print(f"⚠️ AI failed in {step_times['ai_processing']:.1f}s, using fallbacks: {e}")
+                summarized_articles = articles[:8]
                 for article in summarized_articles:
-                    article['ai_summary'] = create_detailed_fallback_summary(article)
-                print(f"Using fallback summaries for {len(summarized_articles)} articles")
+                    article['ai_summary'] = create_quick_fallback_summary(article)
             
-            # Step 3: Send email with timeout protection
+            # Step 3: Email Delivery
+            step_start = time.time()
             try:
-                print(f"[{datetime.utcnow().isoformat()}] Sending email...")
+                print(f"📧 [STEP 3/3] Sending email ({len(summarized_articles)} articles)...")
                 send_daily_email(summarized_articles)
+                step_times['email_send'] = time.time() - step_start
                 
-                execution_time = (datetime.utcnow() - start_time).total_seconds()
-                success_msg = f"Success! Daily email sent with {len(summarized_articles)} high-quality AI articles (last 3 days) in {execution_time:.1f}s at {datetime.utcnow().isoformat()}."
-                print(success_msg)
+                # Performance Summary
+                total_time = time.time() - start_time
+                print(f"✅ Email sent in {step_times['email_send']:.1f}s")
+                print(f"")
+                print(f"📊 PERFORMANCE SUMMARY:")
+                print(f"   RSS Fetch:     {step_times.get('rss_fetch', 0):.1f}s")
+                print(f"   AI Processing: {step_times.get('ai_processing', 0):.1f}s")
+                print(f"   Email Send:    {step_times.get('email_send', 0):.1f}s")
+                print(f"   TOTAL TIME:    {total_time:.1f}s")
                 
-                # Log performance metrics
-                if execution_time > 200:
-                    print(f"⚠️ Warning: Execution took {execution_time:.1f}s (target: <200s)")
+                # Performance analysis
+                if total_time < 120:
+                    print(f"🎯 EXCELLENT: Completed in {total_time:.1f}s (target: <200s)")
+                elif total_time < 200:
+                    print(f"✅ GOOD: Completed in {total_time:.1f}s (within target)")
                 else:
-                    print(f"✅ Performance: Completed within target time ({execution_time:.1f}s < 200s)")
+                    print(f"⚠️ SLOW: Took {total_time:.1f}s (target: <200s)")
+                
+                success_msg = f"Success! Daily AI news sent ({len(summarized_articles)} articles) in {total_time:.1f}s at {datetime.utcnow().isoformat()}."
                 
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
@@ -566,8 +515,10 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(success_msg.encode())
                 
             except Exception as e:
-                error_msg = f"Failed to send daily email: {str(e)}"
-                print(f"Email error: {error_msg}")
+                step_times['email_send'] = time.time() - step_start
+                total_time = time.time() - start_time
+                error_msg = f"Email failed after {total_time:.1f}s: {str(e)}"
+                print(f"❌ {error_msg}")
                 self.send_response(500)
                 self.send_header('Content-type', 'text/plain')
                 self.send_header('Access-Control-Allow-Origin', '*')

@@ -1,0 +1,102 @@
+name: Daily AI News Automation - Optimized
+
+on:
+  schedule:
+    # Run at 11:30 PM IST daily (6:00 PM UTC)
+    - cron: "0 18 * * *"
+  workflow_dispatch: # Allow manual trigger for testing
+
+jobs:
+  send-ai-news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # 15-minute timeout for optimized version
+    
+    steps:
+      - name: 🚀 Trigger AI News Automation
+        id: trigger
+        run: |
+          echo "🤖 Starting Daily AI News Automation"
+          echo "📅 Scheduled for 11:30 PM IST (6:00 PM UTC)"
+          echo "⏰ Execution started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          
+          # Single request with extended timeout for optimized function
+          echo "📡 Sending request to Vercel endpoint..."
+          
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}" \
+            --connect-timeout 30 \
+            --max-time 300 \
+            --retry 2 \
+            --retry-delay 30 \
+            -H "User-Agent: GitHub-Actions-Daily-AI-News-Optimized" \
+            -X GET \
+            "https://ai-news-automation.vercel.app/api/index")
+          
+          echo "📊 Full Response:"
+          echo "$response"
+          echo ""
+          
+          # Extract status code and timing
+          http_code=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2 | tr -d ' ')
+          time_total=$(echo "$response" | grep "TIME_TOTAL:" | cut -d: -f2 | tr -d ' ')
+          
+          echo "📈 Status Code: $http_code"
+          echo "⏱️  Total Time: ${time_total}s"
+          
+          # Check for success
+          if [ "$http_code" = "200" ]; then
+            echo "✅ SUCCESS! AI News automation completed successfully"
+            echo "📧 Daily email should be delivered shortly"
+            echo "🎯 Function executed in ${time_total}s"
+            
+            # Log success details
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "execution_time=${time_total}" >> $GITHUB_OUTPUT
+            echo "status_code=200" >> $GITHUB_OUTPUT
+            
+          else
+            echo "❌ FAILED with HTTP status: $http_code"
+            echo "⚠️  This may be a timeout - check if email was still sent"
+            echo "🔍 Check Vercel function logs for details"
+            
+            # Log failure details
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "status_code=${http_code}" >> $GITHUB_OUTPUT
+            
+            exit 1
+          fi
+
+      - name: 📊 Log Execution Summary
+        if: always()
+        run: |
+          echo "📋 EXECUTION SUMMARY"
+          echo "===================="
+          echo "🕒 Completed at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "📈 Status: ${{ steps.trigger.outputs.success == 'true' && 'SUCCESS ✅' || 'FAILED ❌' }}"
+          echo "⏱️  Execution Time: ${{ steps.trigger.outputs.execution_time }}s"
+          echo "📊 HTTP Status: ${{ steps.trigger.outputs.status_code }}"
+          echo ""
+          echo "💡 Note: Even if GitHub Actions shows timeout, check your email"
+          echo "📧 Vercel function may complete successfully despite HTTP timeout"
+          
+      - name: 🔧 Troubleshooting Info
+        if: failure()
+        run: |
+          echo "🔧 TROUBLESHOOTING GUIDE"
+          echo "========================"
+          echo ""
+          echo "If this job failed but you received the email:"
+          echo "✅ The automation worked correctly"
+          echo "❌ Only the HTTP request timed out"
+          echo ""
+          echo "To verify success:"
+          echo "1. Check your email inbox for today's AI news digest"
+          echo "2. Visit https://ai-news-automation.vercel.app/api/check"
+          echo "3. Check Vercel function logs in the dashboard"
+          echo ""
+          echo "Common causes of timeouts:"
+          echo "• RSS feeds taking longer than usual to respond"
+          echo "• Gemini AI rate limiting or slower responses"
+          echo "• Network latency between GitHub and Vercel"
+          echo ""
+          echo "🎯 Target execution time: Under 200 seconds"
