@@ -16,11 +16,17 @@ def fetch_news_articles():
     
     start_time = time.time()
     
-    # Only fastest, most reliable RSS feeds
+    # Fast and reliable RSS feeds (6 sources for better coverage)
     RSS_FEEDS = [
+        # Tier 1: Premium tech publications (fastest)
         "https://www.technologyreview.com/tag/artificial-intelligence/feed/",
         "https://venturebeat.com/category/ai/feed/",
-        "https://marktechpost.com/feed/"
+        "https://marktechpost.com/feed/",
+        
+        # Tier 2: Reliable and fast sources
+        "https://research.google/blog/rss/",  # Google Research - usually fast
+        "https://techcrunch.com/category/artificial-intelligence/feed/",  # TechCrunch AI
+        "https://www.artificialintelligence-news.com/feed/"  # AI News - dedicated AI site
     ]
     
     def fetch_single_feed(url):
@@ -70,12 +76,12 @@ def fetch_news_articles():
     
     all_articles = []
     
-    # Parallel RSS fetching with 10-second total timeout
+    # Parallel RSS fetching with 15-second total timeout for 6 feeds
     try:
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_url = {executor.submit(fetch_single_feed, url): url for url in RSS_FEEDS}
             
-            for future in as_completed(future_to_url, timeout=10):
+            for future in as_completed(future_to_url, timeout=15):
                 try:
                     articles = future.result()
                     all_articles.extend(articles)
@@ -91,7 +97,7 @@ def fetch_news_articles():
     fetch_time = time.time() - start_time
     print(f"RSS fetch completed in {fetch_time:.2f}s with {len(unique_articles)} articles")
     
-    return unique_articles[:12]  # Limit to 12 articles for faster processing
+    return unique_articles[:18]  # Limit to 18 articles for processing (6 feeds × 3 articles avg)
 
 def extract_domain(url):
     """Extract clean, readable domain name from URL for source attribution"""
@@ -102,19 +108,20 @@ def extract_domain(url):
         # Clean up domain name
         domain = domain.replace('www.', '').replace('feeds.', '').replace('feed.', '')
         
-        # Create more readable source names
+        # Create more readable source names (updated for 6 feeds)
         source_mapping = {
             'technologyreview.com': 'MIT Technology Review',
             'venturebeat.com': 'VentureBeat',
             'marktechpost.com': 'MarkTechPost',
             'research.google': 'Google Research',
+            'techcrunch.com': 'TechCrunch',
+            'artificialintelligence-news.com': 'AI News',
+            # Legacy mappings (in case feeds change)
             'feedburner.com': 'AI News',
             'wired.com': 'Wired',
             'ai-techpark.com': 'AI TechPark',
             'bair.berkeley.edu': 'Berkeley AI Research',
-            'magazine.sebastianraschka.com': 'Sebastian Raschka',
-            '404media.co': '404 Media',
-            'ai2people.com': 'AI2People'
+            '404media.co': '404 Media'
         }
         
         # Return mapped name if available, otherwise cleaned domain
@@ -147,17 +154,17 @@ def summarize_with_gemini(articles):
     if not articles: 
         return []
     if not gemini_api_key: 
-        return articles[:8]  # Return articles without AI summaries
+        return articles[:12]  # Return articles without AI summaries
     
     try:
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')  # Use faster model
+        model = genai.GenerativeModel('gemini-2.5-flash')  # Use Gemini 2.5 Flash for better quality
         
-        # Process only top 8 articles for speed
-        articles_to_process = articles[:8]
+        # Process 10-12 articles for better coverage with 6 RSS feeds
+        articles_to_process = articles[:12]
         summarized_articles = []
         
-        print(f"Processing {len(articles_to_process)} articles with optimized AI...")
+        print(f"Processing {len(articles_to_process)} articles with Gemini 2.5 Flash...")
         
         for i, article in enumerate(articles_to_process):
             try:
@@ -178,7 +185,7 @@ Summary:"""
                         enhanced_article = article.copy()
                         enhanced_article['ai_summary'] = ai_summary
                         summarized_articles.append(enhanced_article)
-                        print(f"✅ {i+1}/8: {article['title'][:40]}...")
+                        print(f"✅ {i+1}/12: {article['title'][:40]}...")
                         continue
                 
                 # Quick fallback
@@ -200,7 +207,7 @@ Summary:"""
         print(f"Gemini AI error: {e}")
         # Quick fallback articles
         fallback_articles = []
-        for article in articles[:8]:
+        for article in articles[:12]:
             enhanced_article = article.copy()
             enhanced_article['ai_summary'] = create_quick_fallback_summary(article)
             fallback_articles.append(enhanced_article)
@@ -477,7 +484,7 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 step_times['ai_processing'] = time.time() - step_start
                 print(f"⚠️ AI failed in {step_times['ai_processing']:.1f}s, using fallbacks: {e}")
-                summarized_articles = articles[:8]
+                summarized_articles = articles[:12]
                 for article in summarized_articles:
                     article['ai_summary'] = create_quick_fallback_summary(article)
             
