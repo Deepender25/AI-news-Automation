@@ -168,13 +168,13 @@ def summarize_with_gemini(articles):
         
         for i, article in enumerate(articles_to_process):
             try:
-                # Focused prompt that avoids source commentary
-                prompt = f"""Summarize this AI/tech article in 2-3 clear, factual sentences. Focus ONLY on what happened, key technical details, and direct impact. Do NOT mention the publication or add generic commentary about the industry.
+                # Balanced prompt for detailed but focused summaries
+                prompt = f"""Summarize this AI/tech article in 3-4 informative sentences. Include key details about what happened, who is involved, the technology or methods mentioned, and the significance or implications. Focus on factual content from the article without adding generic industry commentary.
 
 Title: {article['title']}
 Article Content: {article.get('summary', '')[:300]}
 
-Provide a concise, factual summary:"""
+Provide a detailed, factual summary:"""
                 
                 response = model.generate_content(prompt)
                 
