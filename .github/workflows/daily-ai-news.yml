@@ -3,7 +3,7 @@ name: Daily AI News Automation - Optimized
 on:
   schedule:
     # Run at 11:30 PM IST daily (6:00 PM UTC)
-    - cron: "20 6 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch: # Allow manual trigger for testing
 
 jobs:
