@@ -168,14 +168,13 @@ def summarize_with_gemini(articles):
         
         for i, article in enumerate(articles_to_process):
             try:
-                # Simplified, faster prompt
-                prompt = f"""Summarize this AI/tech article in 3-4 clear sentences. Focus on key facts and why it matters.
+                # Focused prompt that avoids source commentary
+                prompt = f"""Summarize this AI/tech article in 2-3 clear, factual sentences. Focus ONLY on what happened, key technical details, and direct impact. Do NOT mention the publication or add generic commentary about the industry.
 
 Title: {article['title']}
-Source: {article['source']}
-Content: {article.get('summary', '')[:300]}
+Article Content: {article.get('summary', '')[:300]}
 
-Summary:"""
+Provide a concise, factual summary:"""
                 
                 response = model.generate_content(prompt)
                 
@@ -227,7 +226,7 @@ def create_quick_fallback_summary(article):
             summary_text = summary_text[:200] + '...'
     else:
         # Generate based on title
-        summary_text = f"This article from {source} discusses developments in {title.lower()}. The announcement highlights ongoing innovation in artificial intelligence and technology."
+        summary_text = f"This article from {source} discusses developments in {title.lower()}."
     
     return summary_text
 
@@ -256,7 +255,7 @@ def create_detailed_fallback_summary(article):
         if not summary_text.endswith('.'):
             summary_text += '.'
             
-        return f"{summary_text} This development from {source} represents significant progress in artificial intelligence and technology, highlighting the ongoing innovation that continues to shape the industry landscape."
+        return summary_text
     else:
         # Create a more detailed summary based on title analysis
         title_lower = title.lower()
@@ -271,7 +270,7 @@ def create_detailed_fallback_summary(article):
         else:
             context = "This technology development"
             
-        return f"{context} focuses on {title.lower()}. The article from {source} covers important innovations and insights in the artificial intelligence sector. This advancement demonstrates the rapid pace of AI development and its growing impact across various industries. The development represents another step forward in the evolution of artificial intelligence technology."
+        return f"{context} focuses on {title.lower()}. The article from {source} covers important innovations and insights in the artificial intelligence sector."
 
 def create_fallback_summary(article):
     """Legacy fallback - redirects to detailed version"""
